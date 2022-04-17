@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "cyberDucky": {
+    "CyberDino": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -33,7 +33,9 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [
+              "src/assets/kaboom.js"
+            ]
           },
           "configurations": {
             "production": {
@@ -72,10 +74,12 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "cyberDucky:build:production"
+              "browserTarget": "CyberDino:build:production",
+              "ssl":true
             },
             "development": {
-              "browserTarget": "cyberDucky:build:development"
+              "browserTarget": "CyberDino:build:development",
+              "ssl": true
             }
           },
           "defaultConfiguration": "development"
@@ -83,7 +87,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "cyberDucky:build"
+            "browserTarget": "CyberDino:build"
           }
         },
         "test": {
@@ -107,5 +111,5 @@
       }
     }
   },
-  "defaultProject": "cyberDucky"
+  "defaultProject": "CyberDino"
 }
