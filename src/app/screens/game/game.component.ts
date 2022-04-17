@@ -17,7 +17,6 @@ export class GameComponent implements OnInit {
 
     this.game.beginGame();
     this.game.loadSprites();
-    this.game.loadLevelConfig();
 
     this.game.createScene();
     // this.game.enableDebug();
