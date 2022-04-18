@@ -143,7 +143,21 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       },
     }
   });
+
+  this.game.loadSprite("bird",'./assets/sprites/bird.png',{
+    sliceX: 2,
+    sliceY:1,
+    anims: {
+      fly: {
+        from:0,
+        to: 1,
+        speed: 10,
+        loop: true,
+      },
+    }
+  });
   this.game.loadSprite("ground", './assets/sprites/ground.png');
+  this.game.loadSprite("cloud", './assets/sprites/cloud.png');
   this.game.loadSprite("block", './assets/sprites/block.png');
   }
   
@@ -179,6 +193,7 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
           this.createBlocks(nextX);
           this.createCoins(nextX);
           this.createEnemies(nextX);
+          this.createBirds(nextX);
         }
 
     });
@@ -293,15 +308,16 @@ this.game.onKeyDown("down", () => {
       coin.destroy();
       this.coins++;
       this.coinsLabel.text = this.coins;
-      if(this.coins > this.chestCapacity && this.chestCount < 10){
+      if(this.coins > this.chestCapacity && this.chestCount < 4){
         this.coins = 0;
         this.createChest();
       }
     });
 
-    this.player.onCollide("enemy", async (enemy:any, collision:any) => {
+    this.player.onCollide('evil', async (enemy:any, collision:any) => {
       this.isJumping = false;
       enemy.destroy();
+      console.log(collision.isBottom(), collision.isTop(), collision.isLeft(), collision.isRight());
       if(!collision.isBottom()){
         this.player.color = this.game.rgb(255, 0, 0 );
         this.game.shake(10);
@@ -328,8 +344,15 @@ this.game.onKeyDown("down", () => {
 
         this.createPlayer(player);
         this.createEnemies();
+        this.createBirds();
 
-        this.game.onUpdate('enemy' , (d:any)=> d.move(-40,0));
+        this.game.onUpdate('enemy' , (d:any)=> {
+          d.move(- Math.max(30,(d._id%10) * 20) ,0)
+        });
+
+        this.game.onUpdate('bird' , (d:any)=> {
+          d.move(- Math.max(30,(d._id%10) * 20) ,0)
+        });
  
         this.arowControl();
         this.createLabel();
@@ -349,7 +372,7 @@ this.game.onKeyDown("down", () => {
     this.coinsLabel = this.game.add([
       this.game.text(this.coins),
       this.game.pos(24, 24),
-      this.game.scale(5),
+      this.game.scale(4),
       this.game.fixed(),
     ])
   }
@@ -358,12 +381,44 @@ this.game.onKeyDown("down", () => {
   createChest(){
     const chest = this.game.add([
       this.game.sprite('chest'),
-      this.game.pos(150 + this.chestCount*100  , 0),
-      this.game.scale(2),
+      this.game.pos(this.game.width() -100 - this.chestCount*100  , 10),
+      this.game.scale(1.5),
       this.game.fixed(),
     ]);
-    this.chestBuffer.push(chest);
+    const label = this.game.add([
+      this.game.text(`x${this.chestCapacity}`),
+      this.game.pos(this.game.width() -100 - this.chestCount*100  , 70),
+      this.game.scale(2),
+      this.game.fixed(),
+    ])
+    this.chestBuffer.push({chest,label});
     this.chestCount++;
+  }
+
+  createClouds(x=0){
+    const heightRange = [460 , 600];
+    const count =  Math.random() * 5;
+    let nextX = x;
+    for(let i = 0; i < count; i++){
+      nextX = nextX + 100 + Math.random() * 1500;
+      const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+      const cloud = this.game.add(
+        [
+          this.game.sprite('cloud'),
+          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.origin('center'),
+          this.game.area({ width: 30, height: 20 }),
+          this.game.scale(1.7),
+          this.game.outview({offset: 1000}),
+           'cloud',
+        ]
+      );
+      cloud.onExitView( () => {
+      if(cloud.pos.x < this.playerMaxPos)
+      cloud.destroy();
+      });
+
+    }
   }
 
   createGround(x=0){
@@ -437,6 +492,34 @@ this.game.onKeyDown("down", () => {
       coin.play('spin');
     }
   };
+  createBirds(x = 0){
+    const heightRange = [460 , 600];
+    const count =  Math.random() * 5;
+    let nextX = x;
+    for(let i = 0; i < count; i++){
+      nextX = nextX + 100 + Math.random() * 1500;
+      const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+      const bird = this.game.add(
+        [
+          this.game.sprite('bird'),
+          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.origin('center'),
+          this.game.area({ width: 30, height: 20 }),
+          this.game.scale(1.7),
+          this.game.outview({offset: 1000}),
+          this.game.solid(),
+           'bird',
+           'evil'
+        ]
+      );
+      bird.onExitView( () => {
+      if(bird.pos.x < this.playerMaxPos)
+      bird.destroy();
+      });
+
+      bird.play('fly');
+    }
+  }
   createEnemies(x = 0){
     const heightRange = [350];
     const count =  Math.random() * 5;
@@ -450,10 +533,11 @@ this.game.onKeyDown("down", () => {
           this.game.pos(nextX, this.game.height() - nextY),
           this.game.origin('center'),
           this.game.area({ width: 15, height: 15 }),
-          this.game.scale(3),
+          this.game.scale(2.5),
           this.game.outview({offset: 1000}),
           this.game.body(),
-          'enemy'
+          'enemy',
+          'evil'
         ]
       );
       enemy.onExitView( () => {
