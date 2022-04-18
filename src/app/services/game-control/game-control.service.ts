@@ -396,7 +396,7 @@ this.game.onKeyDown("down", () => {
   }
 
   createClouds(x=0){
-    const heightRange = [460 , 600];
+    const heightRange = [260 , 400];
     const count =  Math.random() * 5;
     let nextX = x;
     for(let i = 0; i < count; i++){
@@ -425,7 +425,7 @@ this.game.onKeyDown("down", () => {
     const ground = this.game.add(
       [
         this.game.sprite('ground'),
-        this.game.pos(x, this.game.height() - 200),
+        this.game.pos(x, this.game.height()),
         this.game.scale(2),
         this.game.origin('botleft'),
         this.game.area({ width: 1200, height: 42 }),
@@ -442,7 +442,7 @@ this.game.onKeyDown("down", () => {
   }
 
   createBlocks(x=0){
-    const heightRange = [400 , 500];
+    const heightRange = [200 , 300];
     const count =  Math.random() * 10;
     let nextX = x;
     for(let i = 0; i < count; i++){
@@ -467,7 +467,7 @@ this.game.onKeyDown("down", () => {
     }
   };
   createCoins(x =0 ){
-    const heightRange = [350 , 450 , 550];
+    const heightRange = [150 , 250 , 350];
     const count =  Math.random() * 10;
     let nextX = x;
     for(let i = 0; i < count; i++){
@@ -493,7 +493,7 @@ this.game.onKeyDown("down", () => {
     }
   };
   createBirds(x = 0){
-    const heightRange = [460 , 600];
+    const heightRange = [260 , 400];
     const count =  Math.random() * 5;
     let nextX = x;
     for(let i = 0; i < count; i++){
@@ -521,7 +521,7 @@ this.game.onKeyDown("down", () => {
     }
   }
   createEnemies(x = 0){
-    const heightRange = [350];
+    const heightRange = [150];
     const count =  Math.random() * 5;
     let nextX = x;
     for(let i = 0; i < count; i++){
