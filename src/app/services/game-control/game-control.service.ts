@@ -317,7 +317,6 @@ this.game.onKeyDown("down", () => {
     this.player.onCollide('evil', async (enemy:any, collision:any) => {
       this.isJumping = false;
       enemy.destroy();
-      console.log(collision.isBottom(), collision.isTop(), collision.isLeft(), collision.isRight());
       if(!collision.isBottom()){
         this.player.color = this.game.rgb(255, 0, 0 );
         this.game.shake(10);
