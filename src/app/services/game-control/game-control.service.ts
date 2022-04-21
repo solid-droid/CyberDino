@@ -18,10 +18,11 @@ export class GameControlService {
   chestCount = 0;
   chestCapacity = 1;
   chestBuffer:any = [];
+  height:any;
 
 
   constructor() { 
-
+    
   }
 
 
@@ -32,7 +33,7 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
-
+   this.height = this.game.height() * window.devicePixelRatio;
    $(window).on('resize',() => {
     this.resize();
     });
@@ -41,7 +42,7 @@ export class GameControlService {
   }
 
   resize(){
-    this.player.use(this.game.pos(0, this.game.height()-200));
+    this.player.use(this.game.pos(0, this.height -200));
   }
 
   loadSprites(){
@@ -404,7 +405,7 @@ this.game.onKeyDown("down", () => {
       const cloud = this.game.add(
         [
           this.game.sprite('cloud'),
-          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
           this.game.area({ width: 30, height: 20 }),
           this.game.scale(1.7),
@@ -424,7 +425,7 @@ this.game.onKeyDown("down", () => {
     const ground = this.game.add(
       [
         this.game.sprite('ground'),
-        this.game.pos(x, this.game.height()),
+        this.game.pos(x , this.height),
         this.game.scale(2),
         this.game.origin('botleft'),
         this.game.area({ width: 1200, height: 42 }),
@@ -450,7 +451,7 @@ this.game.onKeyDown("down", () => {
       const block = this.game.add(
         [
           this.game.sprite('block'),
-          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.pos(nextX, this.height - nextY),
           this.game.scale(2),
           this.game.origin('botleft'),
           this.game.area({ width: 61, height: 10 }),
@@ -475,7 +476,7 @@ this.game.onKeyDown("down", () => {
       const coin = this.game.add(
         [
           this.game.sprite('coin'),
-          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.pos(nextX, this.height - nextY),
           this.game.scale(0.3),
           this.game.origin('center'),
           this.game.area({ width: 100, height: 100 }),
@@ -501,7 +502,7 @@ this.game.onKeyDown("down", () => {
       const bird = this.game.add(
         [
           this.game.sprite('bird'),
-          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
           this.game.area({ width: 30, height: 20 }),
           this.game.scale(1.7),
@@ -529,7 +530,7 @@ this.game.onKeyDown("down", () => {
       const enemy = this.game.add(
         [
           this.game.sprite('enemy'),
-          this.game.pos(nextX, this.game.height() - nextY),
+          this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
           this.game.area({ width: 15, height: 15 }),
           this.game.scale(2.5),
