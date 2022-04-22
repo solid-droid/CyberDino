@@ -33,7 +33,7 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
-   this.height = this.game.height() * window.devicePixelRatio - 50;
+   this.height = window.innerHeight * 0.8 * window.devicePixelRatio - 100;
    $(window).on('resize',() => {
     this.resize();
     });
