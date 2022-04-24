@@ -16,10 +16,12 @@ export class GameControlService {
   coins = 0;
   coinsLabel:any;
   chestCount = 0;
-  chestCapacity = 1;
+  chestCapacity = 10;
   chestBuffer:any = [];
   height:any;
-
+  gameOver = false;
+  gameOverDelay = false;
+  backgroundAudio:any;
 
   constructor() { 
     
@@ -33,7 +35,29 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
-   this.height = window.innerHeight * 0.8 * window.devicePixelRatio - 100;
+   console.log(window.devicePixelRatio);
+   if(window.devicePixelRatio > 1.5){
+     if(screen.orientation.type.includes('landscape')){
+      this.height = window.innerHeight+150;
+     } else if(screen.orientation.type.includes('portrait')){
+      this.height = window.innerHeight*0.8;
+     }
+
+   } 
+
+   if(window.devicePixelRatio > 2){
+    if(screen.orientation.type.includes('landscape')){
+      this.height = window.innerHeight-100;
+     }
+
+   }
+
+   
+   if(window.devicePixelRatio < 1.5){
+    this.height = window.innerHeight * 0.8 * window.devicePixelRatio - 100;
+    this.height = this.height < 600 ? 646 : this.height;
+   }
+
    $(window).on('resize',() => {
     this.resize();
     });
@@ -43,6 +67,15 @@ export class GameControlService {
 
   resize(){
     this.player.use(this.game.pos(0, this.height -200));
+  }
+
+  loadSound(){
+    this.game.loadSound("background", "./assets/sound/Trippy_Trip_Trop.mp3");
+    this.game.loadSound("jump", "./assets/sound/jump.mp3");
+    this.game.loadSound("coin", "./assets/sound/coin.mp3");
+    this.game.loadSound("damage", "./assets/sound/damage.mp3");
+    this.game.loadSound("blast", "./assets/sound/blast.mp3");
+    this.game.loadSound("gameover", "./assets/sound/gameover.mp3");
   }
 
   loadSprites(){
@@ -200,58 +233,75 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
     });
   }
   arowControl(){
+    this.game.onKeyPress(() => {
+      if(this.gameOver && this.gameOverDelay){
+        this.game.go("game");
+      }
+
+      if(!this.backgroundAudio){
+        this.backgroundAudio = this.game.play("background", {
+          volume: 0.8,
+          loop: true
+      });
+      }
+  })
     //Rigth////////////////////////////////////////////  
     this.game.onKeyDown("right", () => {
-      this.player.move(this.SPEED, 0)
-      this.playerMaxPos = this.player.pos.x;
-      if(!this.game.isKeyDown("down")){
-        if (this.player.isGrounded() && this.player.curAnim() !== "runRight") {
-            this.player.use(this.game.sprite('CyberDinoRunRight'));
-            this.player.use(this.game.area({ width: 40, height: 43}));
-            this.player.play("runRight");
-        } else if (!this.player.isGrounded() && this.player.curAnim() !== "idleRight") {
-            this.player.use(this.game.sprite('CyberDinoRunRight'));
-            this.player.use(this.game.area({ width: 40, height: 43}));
-            this.player.play("idleRight");
+      if(!this.gameOver){
+        this.player.move(this.SPEED, 0)
+        this.playerMaxPos = this.player.pos.x;
+        if(!this.game.isKeyDown("down")){
+          if (this.player.isGrounded() && this.player.curAnim() !== "runRight") {
+              this.player.use(this.game.sprite('CyberDinoRunRight'));
+              this.player.use(this.game.area({ width: 40, height: 43}));
+              this.player.play("runRight");
+          } else if (!this.player.isGrounded() && this.player.curAnim() !== "idleRight") {
+              this.player.use(this.game.sprite('CyberDinoRunRight'));
+              this.player.use(this.game.area({ width: 40, height: 43}));
+              this.player.play("idleRight");
+          }
+        }
+        else {
+          if(this.player.isGrounded() && this.player.curAnim() !== "crouchRight") {
+            this.player.use(this.game.sprite('CyberDinoCrouchRight'));
+            this.player.use(this.game.area({ width: 47, height: 25}));
+            this.player.play("crouchRight");
+          } else if (!this.player.isGrounded() && this.player.curAnim() !== "crouchRightIdle") {
+            this.player.use(this.game.sprite('CyberDinoCrouchRight'));
+            this.player.use(this.game.area({ width: 47, height: 25}));
+            this.player.play("crouchIdleRight");
+          }
         }
       }
-      else {
-        if(this.player.isGrounded() && this.player.curAnim() !== "crouchRight") {
-          this.player.use(this.game.sprite('CyberDinoCrouchRight'));
-          this.player.use(this.game.area({ width: 47, height: 25}));
-          this.player.play("crouchRight");
-        } else if (!this.player.isGrounded() && this.player.curAnim() !== "crouchRightIdle") {
-          this.player.use(this.game.sprite('CyberDinoCrouchRight'));
-          this.player.use(this.game.area({ width: 47, height: 25}));
-          this.player.play("crouchIdleRight");
-        }
-      }
+      
     });
   
     //Left////////////////////////////////////////////
   this.game.onKeyDown("left", () => {
-    const threshold = this.playerMaxPos - 1000 < 100 ? 100 : this.playerMaxPos - 1000;
-    if(this.player.pos.x > threshold){
-       this.player.move(-this.SPEED, 0);
-       if(!this.game.isKeyDown("down")){
-          if (this.player.isGrounded() && this.player.curAnim() !== "runLeft") {
-            this.player.use(this.game.sprite('CyberDinoRunLeft'));
-            this.player.use(this.game.area({ width: 40, height: 43}));
-            this.player.play("runLeft")
-          } else if (!this.player.isGrounded() && this.player.curAnim() !== "idleLeft") {
-            this.player.use(this.game.sprite('CyberDinoRunLeft'));
-            this.player.use(this.game.area({ width: 40, height: 43}));
-            this.player.play("idleLeft");
+    if(!this.gameOver){
+      const threshold = this.playerMaxPos - 1000 < 100 ? 100 : this.playerMaxPos - 1000;
+      if(this.player.pos.x > threshold){
+        this.player.move(-this.SPEED, 0);
+        if(!this.game.isKeyDown("down")){
+            if (this.player.isGrounded() && this.player.curAnim() !== "runLeft") {
+              this.player.use(this.game.sprite('CyberDinoRunLeft'));
+              this.player.use(this.game.area({ width: 40, height: 43}));
+              this.player.play("runLeft")
+            } else if (!this.player.isGrounded() && this.player.curAnim() !== "idleLeft") {
+              this.player.use(this.game.sprite('CyberDinoRunLeft'));
+              this.player.use(this.game.area({ width: 40, height: 43}));
+              this.player.play("idleLeft");
+            }
+        } else {
+          if(this.player.isGrounded() && this.player.curAnim() !== "crouchLeft") {
+            this.player.use(this.game.sprite('CyberDinoCrouchLeft'));
+            this.player.use(this.game.area({ width: 47, height: 25}));
+            this.player.play("crouchLeft");
+          } else if (!this.player.isGrounded() && this.player.curAnim() !== "crouchLeftIdle") {
+            this.player.use(this.game.sprite('CyberDinoCrouchLeft'));
+            this.player.use(this.game.area({ width: 47, height: 25}));
+            this.player.play("crouchIdleLeft");
           }
-      } else {
-        if(this.player.isGrounded() && this.player.curAnim() !== "crouchLeft") {
-          this.player.use(this.game.sprite('CyberDinoCrouchLeft'));
-          this.player.use(this.game.area({ width: 47, height: 25}));
-          this.player.play("crouchLeft");
-        } else if (!this.player.isGrounded() && this.player.curAnim() !== "crouchLeftIdle") {
-          this.player.use(this.game.sprite('CyberDinoCrouchLeft'));
-          this.player.use(this.game.area({ width: 47, height: 25}));
-          this.player.play("crouchIdleLeft");
         }
       }
     }
@@ -259,39 +309,45 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
 
 //Down////////////////////////////////////////////
 this.game.onKeyDown("down", () => {
-  if (!this.game.isKeyDown("left") && !this.game.isKeyDown("right") && this.player.curAnim() !== "crouchIdleRight") {
-    this.player.use(this.game.sprite('CyberDinoCrouchRight'));
-    this.player.use(this.game.area({ width: 47, height: 25}));
-    this.player.play("crouchIdleRight");
+  if(!this.gameOver){
+    if (!this.game.isKeyDown("left") && !this.game.isKeyDown("right") && this.player.curAnim() !== "crouchIdleRight") {
+      this.player.use(this.game.sprite('CyberDinoCrouchRight'));
+      this.player.use(this.game.area({ width: 47, height: 25}));
+      this.player.play("crouchIdleRight");
+    }
   }
-
 
 });
 
    //UP _ SPACE //////////////////////////////////////////////////
     this.game.onKeyPress(["up","space"], () => {
-      if (!this.isJumping) {
-        this.isJumping = true;
-        this.player.jump(900);
-        this.player.use(this.game.sprite('CyberDinoRunRight'));
-        this.player.use(this.game.area({ width: 40, height: 43}));
+      if(!this.gameOver){
+        if (!this.isJumping) {
+          this.isJumping = true;
+          this.game.play('jump');
+          this.player.jump(900);
+          this.player.use(this.game.sprite('CyberDinoRunRight'));
+          this.player.use(this.game.area({ width: 40, height: 43}));
+        }
       }
 
     });
     this.player.onGround(() => {
-      if (!this.game.isKeyDown("left") && !this.game.isKeyDown("right")) {
-        this.player.use(this.game.sprite('CyberDinoRunRight'));
-        this.player.use(this.game.area({ width: 40, height: 43}));
-        this.player.play("idleRight");
-      } 
-
-    this.game.onKeyRelease(["left", "right", "down"], () => {
-        if (this.player.isGrounded() && !this.game.isKeyDown("left") && !this.game.isKeyDown("right")) {
+      if(!this.gameOver){
+        if (!this.game.isKeyDown("left") && !this.game.isKeyDown("right")) {
           this.player.use(this.game.sprite('CyberDinoRunRight'));
           this.player.use(this.game.area({ width: 40, height: 43}));
-          this.player.play("idleRight")
-        }
-      })
+          this.player.play("idleRight");
+        } 
+
+      this.game.onKeyRelease(["left", "right", "down"], () => {
+          if (this.player.isGrounded() && !this.game.isKeyDown("left") && !this.game.isKeyDown("right")) {
+            this.player.use(this.game.sprite('CyberDinoRunRight'));
+            this.player.use(this.game.area({ width: 40, height: 43}));
+            this.player.play("idleRight")
+          }
+        })
+      }
      
     });
   }
@@ -308,9 +364,11 @@ this.game.onKeyDown("down", () => {
     this.player.onCollide("coin", (coin:any) => {
       coin.destroy();
       this.coins++;
+      this.game.play('coin');
       this.coinsLabel.text = this.coins;
-      if(this.coins > this.chestCapacity && this.chestCount < 4){
+      if(this.coins === this.chestCapacity && this.chestCount < 4){
         this.coins = 0;
+        this.coinsLabel.text = this.coins;
         this.createChest();
       }
     });
@@ -319,11 +377,42 @@ this.game.onKeyDown("down", () => {
       this.isJumping = false;
       enemy.destroy();
       if(!collision.isBottom()){
+        this.game.play('damage');
         this.player.color = this.game.rgb(255, 0, 0 );
         this.game.shake(10);
-        await this.delay(1000);
-        this.player.color = this.game.rgb();
+        if(this.coins!==0){
+          this.coins = 0;
+          this.coinsLabel.text = this.coins;
+          await this.delay(1000);
+          this.player.color = this.game.rgb();
+        } else {
+          if(this.chestCount){
+            const len = this.chestCount-1;
+            this.chestCount = len;
+            this.chestBuffer[len].chest.play('explode');
+             this.game.play("blast");
+            await this.delay(1000);
+            this.chestBuffer[len].chest.destroy();
+            this.chestBuffer[len].label.destroy();
+            this.chestBuffer.pop();
+            await this.delay(1000);
+            this.player.color = this.game.rgb();
+          } else {
+            this.gameOverDelay = true;
+            this.gameOver = true;
+            this.gameOverAnimations();
+            await this.delay(1000);
+            this.gameOverDelay = false;
+            await this.delay(1000);
+            if(this.gameOver){
+              this.game.go("game");
+            }
+          }
+
+        }
+
       } else {
+        //enemy kill points
    
       }
 
@@ -332,26 +421,47 @@ this.game.onKeyDown("down", () => {
 
   }
 
+  gameOverAnimations(){
+    this.backgroundAudio?.stop();
+    this.game.play("gameover");
+    const label = this.game.add([
+      this.game.text(`[Game Over].black`,{font: "sink", 
+      styles:{
+        black:{
+          color: this.game.rgb(0, 0, 0),
+        }
+      }
+    }),
+      this.game.pos(this.game.width()/2  , this.game.height()/4),
+      this.game.origin('center'),
+      this.game.scale(10),
+      this.game.fixed(),
+    ]);
+
+  }
+
   delay = async (wait = 1000) => await new Promise(r => setTimeout(r , wait));
 
   createScene(){
-    this.game.scene("game", ({ levelId, player } = { levelId: 0 , player: this.game.vec2(this.playerMaxPos , 300) }) => {
-
+    this.game.scene("game", ({ levelId, player } = { levelId: 0 , player: this.game.vec2(200 , 300) }) => {
+        
+        this.gameOver = false;
         this.createGround();
         this.createBlocks();
         this.createCoins();
 
+        this.backgroundAudio?.play();
 
         this.createPlayer(player);
         this.createEnemies();
         this.createBirds();
 
         this.game.onUpdate('enemy' , (d:any)=> {
-          d.move(- Math.max(30,(d._id%10) * 20) ,0)
+          if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0)
         });
 
         this.game.onUpdate('bird' , (d:any)=> {
-          d.move(- Math.max(30,(d._id%10) * 20) ,0)
+          if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0)
         });
  
         this.arowControl();
@@ -366,6 +476,7 @@ this.game.onKeyDown("down", () => {
     this.game.go("game");
  
   }
+  
 
 
   createLabel(){

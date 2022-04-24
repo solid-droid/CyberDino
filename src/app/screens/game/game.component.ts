@@ -17,6 +17,7 @@ export class GameComponent implements OnInit {
 
     this.game.beginGame();
     this.game.loadSprites();
+    this.game.loadSound();
 
     this.game.createScene();
     // this.game.enableDebug();
