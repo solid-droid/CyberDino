@@ -15,18 +15,19 @@ export class GameControlService {
   playerMaxPos = 200;
   coins = 0;
   coinsLabel:any;
-  chestCount = 0;
+  
   chestCapacity = 10;
   chestBuffer:any = [];
+  functionQueue:any = [];
+  lastChestType = 'destroy';
+
   height:any;
   gameOver = false;
   gameOverDelay = false;
   backgroundAudio:any;
-
-  constructor() { 
-    
-  }
-
+  enableHack = false;
+  hackLabel :any;
+  card:any;
 
   beginGame(){
     this.game = kaboom({ 
@@ -35,15 +36,16 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
-   console.log(window.devicePixelRatio);
+
+   this.functionLoop();
+
    if(window.devicePixelRatio > 1.5){
      if(screen.orientation.type.includes('landscape')){
       this.height = window.innerHeight+150;
      } else if(screen.orientation.type.includes('portrait')){
       this.height = window.innerHeight*0.8;
      }
-
-   } 
+  } 
 
    if(window.devicePixelRatio > 2){
     if(screen.orientation.type.includes('landscape')){
@@ -67,6 +69,29 @@ export class GameControlService {
 
   resize(){
     this.player.use(this.game.pos(0, this.height -200));
+  }
+
+  async functionLoop(){
+    while(true){
+      await new Promise(r => setTimeout(r, 500));
+      const createList = this.functionQueue.filter((x:any) => x.name === 'create');
+      const destroyList = this.functionQueue.filter((x:any) => x.name === 'destroy');
+      if(this.functionQueue.length){
+        if(this.lastChestType === 'destroy' && createList.length){
+          this.lastChestType = 'create';
+          await createList.shift().func(this);
+          const index = this.functionQueue.findIndex((x:any) => x.name === 'create');
+          this.functionQueue.splice(index, 1);
+        } else if(this.lastChestType === 'create' && destroyList.length){
+          this.lastChestType = 'destroy';
+          await destroyList.shift().func(this);
+          const index = this.functionQueue.findIndex((x:any) => x.name === 'destroy');
+          this.functionQueue.splice(index, 1);
+        } else {
+          this.functionQueue.shift().func(this);
+        }
+      }
+    }
   }
 
   loadSound(){
@@ -161,7 +186,25 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
         from:0,
         to:3,
         speed:10
+      },
+      hacking: {
+        from:0,
+        to:1,
+        speed:4,
+        loop: true,
       }
+    }
+  });
+
+  this.game.loadSprite("key",'./assets/sprites/key2.png',{
+    sliceX: 10,
+    anims:{
+      bounce: {
+        from:0,
+        to: 9,
+        speed: 10,
+        loop: true,
+      },
     }
   });
 
@@ -203,7 +246,6 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       this.game.pos(playerPos),
       this.game.origin('bot'),
       this.game.area({ width: 40, height: 43}),
-      this.game.health(8),
       this.game.scale(2),
       this.game.body(),
       "player",
@@ -279,7 +321,7 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
     //Left////////////////////////////////////////////
   this.game.onKeyDown("left", () => {
     if(!this.gameOver){
-      const threshold = this.playerMaxPos - 1000 < 100 ? 100 : this.playerMaxPos - 1000;
+      const threshold = this.playerMaxPos - 500 < 100 ? 100 : this.playerMaxPos - 500;
       if(this.player.pos.x > threshold){
         this.player.move(-this.SPEED, 0);
         if(!this.game.isKeyDown("down")){
@@ -366,17 +408,18 @@ this.game.onKeyDown("down", () => {
       this.coins++;
       this.game.play('coin');
       this.coinsLabel.text = this.coins;
-      if(this.coins === this.chestCapacity && this.chestCount < 4){
+      if(this.coins === this.chestCapacity && this.chestBuffer.length < 4){
         this.coins = 0;
         this.coinsLabel.text = this.coins;
-        this.createChest();
+        this.functionQueue.push({name: 'create' , func:this.createChest});
       }
     });
 
     this.player.onCollide('evil', async (enemy:any, collision:any) => {
       this.isJumping = false;
       enemy.destroy();
-      if(!collision.isBottom()){
+      if(!collision.isBottom()){  
+        this.pushPlayerBack();
         this.game.play('damage');
         this.player.color = this.game.rgb(255, 0, 0 );
         this.game.shake(10);
@@ -386,15 +429,8 @@ this.game.onKeyDown("down", () => {
           await this.delay(1000);
           this.player.color = this.game.rgb();
         } else {
-          if(this.chestCount){
-            const len = this.chestCount-1;
-            this.chestCount = len;
-            this.chestBuffer[len].chest.play('explode');
-             this.game.play("blast");
-            await this.delay(1000);
-            this.chestBuffer[len].chest.destroy();
-            this.chestBuffer[len].label.destroy();
-            this.chestBuffer.pop();
+          if(this.chestBuffer.length){
+            this.functionQueue.push({name: 'destroy' , func :this.destroychest});
             await this.delay(1000);
             this.player.color = this.game.rgb();
           } else {
@@ -421,6 +457,14 @@ this.game.onKeyDown("down", () => {
 
   }
 
+
+  async pushPlayerBack(){
+    for(let i =0;i<20;++i){
+      this.player.move(-1000, 0);
+      await this.delay(3);
+    }
+  }
+
   gameOverAnimations(){
     this.backgroundAudio?.stop();
     this.game.play("gameover");
@@ -440,12 +484,14 @@ this.game.onKeyDown("down", () => {
 
   }
 
-  delay = async (wait = 1000) => await new Promise(r => setTimeout(r , wait));
+  delay = async (wait = 1000) => await this.game.wait(wait/1000);
 
   createScene(){
     this.game.scene("game", ({ levelId, player } = { levelId: 0 , player: this.game.vec2(200 , 300) }) => {
         
         this.gameOver = false;
+        this.playerMaxPos = 200;
+        this.lastChestType = 'destroy';
         this.createGround();
         this.createBlocks();
         this.createCoins();
@@ -455,15 +501,17 @@ this.game.onKeyDown("down", () => {
         this.createPlayer(player);
         this.createEnemies();
         this.createBirds();
+        
 
-        this.game.onUpdate('enemy' , (d:any)=> {
-          if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0)
+        this.game.onUpdate('evil' , (d:any)=> {
+          if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0);
+
         });
 
-        this.game.onUpdate('bird' , (d:any)=> {
-          if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0)
+        this.game.loop(3, () => {
+          this.game.get("destroyItems").forEach((d:any) => (d.pos.x < this.playerMaxPos - 600) ? d.destroy() : null);
+          this.game.get("mainGround").forEach((d:any) => (d.pos.x < this.playerMaxPos - 5000) ? d.destroy() : null);
         });
- 
         this.arowControl();
         this.createLabel();
 
@@ -476,8 +524,36 @@ this.game.onKeyDown("down", () => {
     this.game.go("game");
  
   }
-  
 
+
+  debounce(cb:any, delay = 1000) {
+    let timeout:any;
+  
+    return (...args:any) => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        cb(...args)
+      }, delay)
+    }
+  }
+
+
+  getLabel(text:string, x:number, y:number){
+
+    return this.game.add([
+      this.game.text(`[${text}].black`,{
+      font: "sink", 
+      size: 24,
+      styles:{
+        black:{
+          color: this.game.rgb(0, 0, 0),
+        }
+      }}),
+      this.game.pos(x, y),
+      this.game.scale(1),
+      this.game.fixed(),
+    ])
+  }
 
   createLabel(){
     this.coinsLabel = this.game.add([
@@ -489,21 +565,62 @@ this.game.onKeyDown("down", () => {
   }
 
   
-  createChest(){
-    const chest = this.game.add([
-      this.game.sprite('chest'),
-      this.game.pos(this.game.width() -100 - this.chestCount*100  , 10),
-      this.game.scale(1.5),
-      this.game.fixed(),
-    ]);
-    const label = this.game.add([
-      this.game.text(`x${this.chestCapacity}`),
-      this.game.pos(this.game.width() -100 - this.chestCount*100  , 70),
-      this.game.scale(2),
-      this.game.fixed(),
-    ])
-    this.chestBuffer.push({chest,label});
-    this.chestCount++;
+  createChest(_this:any = this){
+    if(_this.chestBuffer.length < 5){
+      const chest = _this.game.add([
+        _this.game.sprite('chest'),
+        _this.game.pos(_this.game.width() -100 - _this.chestBuffer.length*100  , 10),
+        _this.game.scale(1.5),
+        _this.game.fixed(),
+      ]);
+      const label = _this.game.add([
+        _this.game.text(`x${_this.chestCapacity}`),
+        _this.game.pos(_this.game.width() - 100 - _this.chestBuffer.length*100  , 70),
+        _this.game.scale(2),
+        _this.game.fixed(),
+      ])
+      const key = _this.createKey();
+      _this.chestBuffer.push({chest,label , key , hacking:false , hackTimer:0});
+      if(_this.chestBuffer.length  > 1){
+        _this.enableHack = true;
+        _this.startHacking();
+      } else {
+        _this.enableHack = false;
+        _this.stopHacking();
+      }
+    }
+
+  }
+
+  async destroychest(_this:any = this){
+    if(_this.chestBuffer.length){
+      const len = _this.chestBuffer.length-1;
+      _this.chestBuffer[len]?.chest.play('explode');
+      _this.game.play("blast");
+      await _this.delay(1000);
+      _this.chestBuffer[len]?.chest.destroy();
+      _this.chestBuffer[len]?.label.destroy();
+      _this.chestBuffer[len]?.key.destroy();
+      _this.chestBuffer.pop();
+    }
+  }
+
+
+  createKey(){
+      const key = this.game.add(
+        [
+          this.game.sprite('key'),
+          this.game.pos(this.game.width() -70 - this.chestBuffer.length*100  , 110),
+          this.game.origin('center'),
+          this.game.scale(0.3),
+          this.game.fixed(),
+          this.game.rotate(90),
+          this.game.opacity(0),
+           'key',
+        ]
+      );
+      key.play('bounce');
+      return key;
   }
 
   createClouds(x=0){
@@ -517,23 +634,16 @@ this.game.onKeyDown("down", () => {
         [
           this.game.sprite('cloud'),
           this.game.pos(nextX, this.height - nextY),
-          this.game.origin('center'),
-          this.game.area({ width: 30, height: 20 }),
           this.game.scale(1.7),
-          this.game.outview({offset: 1000}),
-           'cloud',
+           'cloud',,
+           'destroyItems'
         ]
       );
-      cloud.onExitView( () => {
-      if(cloud.pos.x < this.playerMaxPos)
-      cloud.destroy();
-      });
-
     }
   }
 
   createGround(x=0){
-    const ground = this.game.add(
+    this.game.add(
       [
         this.game.sprite('ground'),
         this.game.pos(x , this.height),
@@ -542,14 +652,11 @@ this.game.onKeyDown("down", () => {
         this.game.area({ width: 1200, height: 42 }),
         this.game.solid(),
         this.game.outview({offset: 1300}),
-        'ground'
+        'ground',
+        'mainGround',
       ]
     );
 
-    ground.onExitView( () => {
-      if(ground.pos.x < this.playerMaxPos - 1200)
-      ground.destroy();
-      });
   }
 
   createBlocks(x=0){
@@ -559,7 +666,7 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 70 + Math.random() * 1000;
       const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
-      const block = this.game.add(
+      this.game.add(
         [
           this.game.sprite('block'),
           this.game.pos(nextX, this.height - nextY),
@@ -567,14 +674,10 @@ this.game.onKeyDown("down", () => {
           this.game.origin('botleft'),
           this.game.area({ width: 61, height: 10 }),
           this.game.solid(),
-          this.game.outview({offset: 1000}),
-          'ground'
+          'ground',
+          'destroyItems'
         ]
       );
-      block.onExitView( () => {
-        if(block.pos.x < this.playerMaxPos)
-          block.destroy();
-        });
     }
   };
   createCoins(x =0 ){
@@ -584,23 +687,18 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 100 + Math.random() * 1000;
       const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
-      const coin = this.game.add(
+      this.game.add(
         [
           this.game.sprite('coin'),
           this.game.pos(nextX, this.height - nextY),
           this.game.scale(0.3),
           this.game.origin('center'),
           this.game.area({ width: 100, height: 100 }),
-          this.game.outview({offset: 1000}),
-          'coin'
+          'coin',
+          'destroyItems'
         ]
-      );
-      coin.onExitView( () => {
-      if(coin.pos.x < this.playerMaxPos)
-        coin.destroy();
-      });
+      ).play('spin');
 
-      coin.play('spin');
     }
   };
   createBirds(x = 0){
@@ -610,25 +708,19 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 100 + Math.random() * 1500;
       const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
-      const bird = this.game.add(
+      this.game.add(
         [
           this.game.sprite('bird'),
           this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
           this.game.area({ width: 30, height: 20 }),
           this.game.scale(1.7),
-          this.game.outview({offset: 1000}),
           this.game.solid(),
            'bird',
-           'evil'
+           'evil',
+           'destroyItems'
         ]
-      );
-      bird.onExitView( () => {
-      if(bird.pos.x < this.playerMaxPos)
-      bird.destroy();
-      });
-
-      bird.play('fly');
+      ).play('fly');
     }
   }
   createEnemies(x = 0){
@@ -638,30 +730,41 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 100 + Math.random() * 1500;
       const nextY = heightRange[0];
-      const enemy = this.game.add(
+      this.game.add(
         [
           this.game.sprite('enemy'),
           this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
           this.game.area({ width: 15, height: 15 }),
           this.game.scale(2.5),
-          this.game.outview({offset: 1000}),
           this.game.body(),
           'enemy',
-          'evil'
+          'evil',
+          'destroyItems'
         ]
-      );
-      enemy.onExitView( () => {
-      if(enemy.pos.x < this.playerMaxPos)
-      enemy.destroy();
-      });
-
-      enemy.play('run');
+      ).play('run');
     }
   };
 
 
+
   enableDebug(status = true){
     this.game.debug.inspect = status;
+  }
+
+
+  //////////////////Levels/////////////////////////
+  async startHacking(){
+    this.chestBuffer.forEach((item:any) => {
+      item.key.use(this.game.opacity(1));
+      item.chest.play('hacking');
+    });
+    for(let i = 0; i < this.chestBuffer.length; i++){
+        await this.delay(5000);
+        this.functionQueue.push({name: 'destroy' , func :this.destroychest});
+    }
+  }
+  stopHacking(){
+
   }
 }
