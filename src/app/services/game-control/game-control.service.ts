@@ -21,6 +21,9 @@ export class GameControlService {
   functionQueue:any = [];
   lastChestType = 'destroy';
 
+  evilMode = false;
+  evilTune:any;
+
   height:any;
   gameOver = false;
   gameOverDelay = false;
@@ -36,6 +39,8 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
+
+
 
    this.functionLoop();
 
@@ -84,7 +89,8 @@ export class GameControlService {
           this.functionQueue.splice(index, 1);
         } else if(this.lastChestType === 'create' && destroyList.length){
           this.lastChestType = 'destroy';
-          await destroyList.shift().func(this);
+          const force = destroyList[0].force;
+          await destroyList.shift().func(this , force);
           const index = this.functionQueue.findIndex((x:any) => x.name === 'destroy');
           this.functionQueue.splice(index, 1);
         } else {
@@ -101,6 +107,7 @@ export class GameControlService {
     this.game.loadSound("damage", "./assets/sound/damage.mp3");
     this.game.loadSound("blast", "./assets/sound/blast.mp3");
     this.game.loadSound("gameover", "./assets/sound/gameover.mp3");
+    this.game.loadSound("trippyEvil", "./assets/sound/evil.mp3");
   }
 
   loadSprites(){
@@ -111,6 +118,12 @@ export class GameControlService {
           runRight: {
             from:2,
             to: 3,
+            speed: 15,
+            loop: true,
+          },
+          trippyRun:{
+            from:0,
+            to:4,
             speed: 15,
             loop: true,
           },
@@ -160,6 +173,19 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
   },
 });
 
+this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png', {
+  sliceX: 2,
+  sliceY:1,
+  anims: {
+    crouchLeft: {
+        from:1,
+        to: 0,
+        speed: 15,
+        loop: true,
+      },
+    crouchIdleLeft: 1,
+  },
+});
 
   this.game.loadSprite("coin",'./assets/sprites/coin.png',{
     sliceX: 6,
@@ -167,6 +193,18 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       spin: {
         from:0,
         to: 5,
+        speed: 10,
+        loop: true,
+      },
+    }
+  });
+
+  this.game.loadSprite("blinkingCoin",'./assets/sprites/blinkingCoin.png',{
+    sliceX: 12,
+    anims:{
+      spin: {
+        from:0,
+        to: 11,
         speed: 10,
         loop: true,
       },
@@ -233,11 +271,54 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       },
     }
   });
+
+  this.game.loadSprite("scrollKey",'./assets/sprites/scrollKey.png',{
+    sliceX: 5,
+    anims: {
+      move: {
+        from:0,
+        to: 4,
+        speed: 10,
+        loop: true,
+      },
+    }
+  });
+
+  this.game.loadSprite("redBird",'./assets/sprites/redBird.png',{
+    sliceX: 2,
+    sliceY:1,
+    anims: {
+      fly: {
+        from:0,
+        to: 1,
+        speed: 10,
+        loop: true,
+      },
+    }
+  });
   this.game.loadSprite("ground", './assets/sprites/ground.png');
   this.game.loadSprite("cloud", './assets/sprites/cloud.png');
   this.game.loadSprite("block", './assets/sprites/block.png');
+
   }
   
+  evilCoinConfig = () => [
+    this.game.sprite('coin'),
+    this.game.area({ width: 70, height: 70}),
+    this.game.scale(0.3)
+  ];
+
+  birdConfig = () => [
+    this.game.sprite('bird'),
+    this.game.area({ width: 30, height: 20 }),
+    this.game.scale(1.7),
+  ];
+
+  enemyConfig = () => [
+    this.game.sprite('enemy'),
+    this.game.area({ width: 15, height: 15 }),
+    this.game.scale(2.5),
+  ];
 
   createPlayer(playerPos:any){
     this.player = this.game.add(
@@ -270,6 +351,9 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
           this.createCoins(nextX);
           this.createEnemies(nextX);
           this.createBirds(nextX);
+          this.createRedBirds(nextX);
+          this.createScrollKey(nextX);
+          this.createBombCoin(nextX);
         }
 
     });
@@ -292,16 +376,18 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       if(!this.gameOver){
         this.player.move(this.SPEED, 0)
         this.playerMaxPos = this.player.pos.x;
+        let runAnim = this.evilMode ? "trippyRun" : "runRight";
         if(!this.game.isKeyDown("down")){
-          if (this.player.isGrounded() && this.player.curAnim() !== "runRight") {
+          if (this.player.isGrounded() && this.player.curAnim() !== runAnim) {
               this.player.use(this.game.sprite('CyberDinoRunRight'));
               this.player.use(this.game.area({ width: 40, height: 43}));
-              this.player.play("runRight");
+              this.player.play(runAnim);
           } else if (!this.player.isGrounded() && this.player.curAnim() !== "idleRight") {
               this.player.use(this.game.sprite('CyberDinoRunRight'));
               this.player.use(this.game.area({ width: 40, height: 43}));
               this.player.play("idleRight");
           }
+
         }
         else {
           if(this.player.isGrounded() && this.player.curAnim() !== "crouchRight") {
@@ -403,6 +489,11 @@ this.game.onKeyDown("down", () => {
 
   enableCollisions(){
    
+    this.player.onCollide("blinkingCoin", (coin:any) => {
+      coin.destroy();
+      this.destroychest(this, true);
+    });
+
     this.player.onCollide("coin", (coin:any) => {
       coin.destroy();
       this.coins++;
@@ -415,6 +506,49 @@ this.game.onKeyDown("down", () => {
       }
     });
 
+
+    this.player.onCollide("scrollKey", (scroll:any) => {
+      scroll.destroy();
+      if(!this.evilMode){
+        this.backgroundAudio?.pause();
+        this.evilTune = this.game.play('trippyEvil');
+        this.evilMode = true;
+        this.game.get("evil").forEach(async (item:any) => {
+          item.use(this.game.sprite('coin'));
+          item.use(this.game.area({ width: 70, height: 70}));
+          item.use(this.game.scale(0.3));
+          item.play('spin');
+        });
+        this.game.wait(this.evilTune?.duration()-0.5).then(() => {
+          if(this.evilMode){
+            this.backgroundAudio?.play();
+            this.evilMode = false;
+            this.game.get("enemy").forEach((item:any) => {
+              item.use(this.game.sprite('enemy'));
+              item.use(this.game.area({ width: 15, height: 15 }));
+              item.use(this.game.scale(2.5));
+              item.play('run');
+            });
+            this.game.get("bird").forEach((item:any) => {
+              item.use(this.game.sprite('bird'));
+              item.use(this.game.area({ width: 30, height: 20 }));
+              item.use(this.game.scale(1.7));
+              item.play('fly');
+            });
+
+          }
+        });
+      }
+
+    });
+
+    this.player.onCollide('redBird', async (enemy:any, collision:any) => {
+      if(collision.isBottom()){ 
+        this.enableHack = false;
+        this.stopHacking();
+      }
+
+    });
     this.player.onCollide('evil', async (enemy:any, collision:any) => {
       this.isJumping = false;
       enemy.destroy();
@@ -430,12 +564,14 @@ this.game.onKeyDown("down", () => {
           this.player.color = this.game.rgb();
         } else {
           if(this.chestBuffer.length){
-            this.functionQueue.push({name: 'destroy' , func :this.destroychest});
+            this.destroychest(this, true);
             await this.delay(1000);
             this.player.color = this.game.rgb();
           } else {
             this.gameOverDelay = true;
             this.gameOver = true;
+            this.evilMode = false;
+            this.evilTune?.stop();
             this.gameOverAnimations();
             await this.delay(1000);
             this.gameOverDelay = false;
@@ -492,6 +628,9 @@ this.game.onKeyDown("down", () => {
         this.gameOver = false;
         this.playerMaxPos = 200;
         this.lastChestType = 'destroy';
+        this.coins = 0;
+        this.chestBuffer = [];
+
         this.createGround();
         this.createBlocks();
         this.createCoins();
@@ -501,7 +640,6 @@ this.game.onKeyDown("down", () => {
         this.createPlayer(player);
         this.createEnemies();
         this.createBirds();
-        
 
         this.game.onUpdate('evil' , (d:any)=> {
           if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0);
@@ -564,6 +702,7 @@ this.game.onKeyDown("down", () => {
     ])
   }
 
+
   
   createChest(_this:any = this){
     if(_this.chestBuffer.length < 5){
@@ -584,16 +723,13 @@ this.game.onKeyDown("down", () => {
       if(_this.chestBuffer.length  > 1){
         _this.enableHack = true;
         _this.startHacking();
-      } else {
-        _this.enableHack = false;
-        _this.stopHacking();
       }
     }
 
   }
 
-  async destroychest(_this:any = this){
-    if(_this.chestBuffer.length){
+  async destroychest(_this:any = this , force = false){
+    if(_this.chestBuffer.length && (_this.enableHack || force)){
       const len = _this.chestBuffer.length-1;
       _this.chestBuffer[len]?.chest.play('explode');
       _this.game.play("blast");
@@ -602,6 +738,12 @@ this.game.onKeyDown("down", () => {
       _this.chestBuffer[len]?.label.destroy();
       _this.chestBuffer[len]?.key.destroy();
       _this.chestBuffer.pop();
+      for(let i = len ; i < 4 ; ++ i){
+        _this.chestBuffer[len]?.chest.destroy();
+        _this.chestBuffer[len]?.label.destroy();
+        _this.chestBuffer[len]?.key.destroy();
+        _this.chestBuffer.splice(len,1);
+      }
     }
   }
 
@@ -701,6 +843,58 @@ this.game.onKeyDown("down", () => {
 
     }
   };
+
+  createScrollKey(x =0 ){
+    if(
+      (x/2400)%2 && 
+      !this.evilMode){
+      const heightRange = [150];
+      const count =  1;
+      let nextX = x;
+      for(let i = 0; i < count; i++){
+        nextX = nextX + 100 + Math.random() * 1000;
+        const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+        this.game.add(
+          [
+            this.game.sprite('scrollKey'),
+            this.game.pos(nextX, this.height - nextY),
+            this.game.scale(0.09),
+            this.game.origin('center'),
+            this.game.area({ width: 700, height: 800 }),
+            'scrollKey',
+            'destroyItems'
+          ]
+        ).play('move');
+  
+      }
+    }
+   };
+
+   createBombCoin(x = 0){
+    if(x>2400*10 && (x/4800)%2 && !this.evilMode){
+      const heightRange = [150 , 250 , 350];
+      const count =  1;
+      let nextX = x;
+      for(let i = 0; i < count; i++){
+        nextX = nextX + 100 + Math.random() * 1000;
+        const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+        this.game.add(
+          [
+            this.game.sprite('blinkingCoin'),
+            this.game.pos(nextX, this.height - nextY),
+            this.game.scale(0.3),
+            this.game.origin('center'),
+            this.game.area({ width: 100, height: 100 }),
+            'blinkingCoin',
+            'destroyItems'
+          ]
+        ).play('spin');
+  
+      }
+    }
+   
+  }
+
   createBirds(x = 0){
     const heightRange = [260 , 400];
     const count =  Math.random() * 5;
@@ -708,21 +902,48 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 100 + Math.random() * 1500;
       const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+
       this.game.add(
         [
-          this.game.sprite('bird'),
+          ...(this.evilMode ? this.evilCoinConfig() : this.birdConfig()),
           this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
-          this.game.area({ width: 30, height: 20 }),
-          this.game.scale(1.7),
           this.game.solid(),
            'bird',
            'evil',
            'destroyItems'
         ]
-      ).play('fly');
+      ).play(this.evilMode ? 'spin' : 'fly');
+
     }
   }
+
+  createRedBirds(x = 0){
+    if((x/2400)%2 && !this.evilMode){
+      const heightRange = [260];
+      const count =  1;
+      let nextX = x;
+      for(let i = 0; i < count; i++){
+        nextX = nextX + 100 + Math.random() * 1500;
+        const nextY = heightRange[Math.floor(Math.random()*heightRange.length)];
+        this.game.add(
+          [
+            this.game.sprite('redBird'),
+            this.game.pos(nextX, this.height - nextY),
+            this.game.origin('center'),
+            this.game.area({ width: 30, height: 20 }),
+            this.game.scale(1.7),
+            this.game.solid(),
+             'redBird',
+             'evil',
+             'destroyItems'
+          ]
+        ).play('fly');
+      }
+    }
+
+  }
+
   createEnemies(x = 0){
     const heightRange = [150];
     const count =  Math.random() * 5;
@@ -730,19 +951,17 @@ this.game.onKeyDown("down", () => {
     for(let i = 0; i < count; i++){
       nextX = nextX + 100 + Math.random() * 1500;
       const nextY = heightRange[0];
-      this.game.add(
+     this.game.add(
         [
-          this.game.sprite('enemy'),
+          ...(this.evilMode ? this.evilCoinConfig() : this.enemyConfig()),
           this.game.pos(nextX, this.height - nextY),
           this.game.origin('center'),
-          this.game.area({ width: 15, height: 15 }),
-          this.game.scale(2.5),
           this.game.body(),
           'enemy',
           'evil',
           'destroyItems'
         ]
-      ).play('run');
+      ).play(this.evilMode ? 'spin' : 'run');
     }
   };
 
@@ -760,11 +979,17 @@ this.game.onKeyDown("down", () => {
       item.chest.play('hacking');
     });
     for(let i = 0; i < this.chestBuffer.length; i++){
-        await this.delay(5000);
+        await this.delay(15000);
+        if(!this.enableHack){
+          break;
+        }
         this.functionQueue.push({name: 'destroy' , func :this.destroychest});
     }
   }
   stopHacking(){
-
+    this.chestBuffer.forEach((item:any) => {
+      item.key.use(this.game.opacity(0));
+      item.chest.play('closed');
+    });
   }
 }
