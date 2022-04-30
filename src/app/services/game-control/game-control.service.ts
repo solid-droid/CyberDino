@@ -20,6 +20,7 @@ export class GameControlService {
   chestBuffer:any = [];
   functionQueue:any = [];
   lastChestType = 'destroy';
+  destroyInProgress = false;
 
   evilMode = false;
   evilTune:any;
@@ -630,6 +631,9 @@ this.game.onKeyDown("down", () => {
         this.lastChestType = 'destroy';
         this.coins = 0;
         this.chestBuffer = [];
+        this.enableHack = false;
+        this.evilMode = false;
+        this.evilTune?.stop();
 
         this.createGround();
         this.createBlocks();
@@ -704,7 +708,10 @@ this.game.onKeyDown("down", () => {
 
 
   
-  createChest(_this:any = this){
+  async createChest(_this:any = this){
+    while(this.destroyInProgress){
+      await new Promise(r => setTimeout(r, 100));
+    }
     if(_this.chestBuffer.length < 5){
       const chest = _this.game.add([
         _this.game.sprite('chest'),
@@ -729,7 +736,11 @@ this.game.onKeyDown("down", () => {
   }
 
   async destroychest(_this:any = this , force = false){
+    while(this.destroyInProgress){
+      await new Promise(r => setTimeout(r, 100));
+    }
     if(_this.chestBuffer.length && (_this.enableHack || force)){
+      this.destroyInProgress = true;
       const len = _this.chestBuffer.length-1;
       _this.chestBuffer[len]?.chest.play('explode');
       _this.game.play("blast");
@@ -738,12 +749,14 @@ this.game.onKeyDown("down", () => {
       _this.chestBuffer[len]?.label.destroy();
       _this.chestBuffer[len]?.key.destroy();
       _this.chestBuffer.pop();
+      //safety check
       for(let i = len ; i < 4 ; ++ i){
         _this.chestBuffer[len]?.chest.destroy();
         _this.chestBuffer[len]?.label.destroy();
         _this.chestBuffer[len]?.key.destroy();
         _this.chestBuffer.splice(len,1);
       }
+      this.destroyInProgress = false;
     }
   }
 
@@ -871,7 +884,7 @@ this.game.onKeyDown("down", () => {
    };
 
    createBombCoin(x = 0){
-    if(x>2400*10 && (x/4800)%2 && !this.evilMode){
+    if(x>2400*5 && (x/2400)%2 && !this.evilMode){
       const heightRange = [150 , 250 , 350];
       const count =  1;
       let nextX = x;
@@ -980,7 +993,11 @@ this.game.onKeyDown("down", () => {
     });
     for(let i = 0; i < this.chestBuffer.length; i++){
         await this.delay(15000);
-        if(!this.enableHack){
+        if(!this.enableHack || this.chestBuffer.length === 1){
+          this.chestBuffer.forEach((item:any) => {
+            item.key.use(this.game.opacity(0));
+            item.chest.play('closed');
+          });
           break;
         }
         this.functionQueue.push({name: 'destroy' , func :this.destroychest});
