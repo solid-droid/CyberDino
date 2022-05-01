@@ -554,7 +554,7 @@ this.game.onKeyDown("down", () => {
           if(this.evilMode){
             this.backgroundAudio?.play();
             this.evilMode = false;
-            if(this.gameLevels.displayCounter.phisingBlocked <10){
+            if(this.gameLevels.displayCounter.phising <10){
               this.showMessage(this.gameLevels.phisingBlocked());
             }
             this.game.get("enemy").forEach((item:any) => {
