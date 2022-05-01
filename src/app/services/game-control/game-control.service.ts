@@ -1115,7 +1115,8 @@ this.game.onKeyDown("down", () => {
       item.chest.play('hacking');
     });
     for(let i = 0; i < this.chestBuffer.length; i++){
-        await this.delay(15000);
+      for(let k=0; k<15; k++){
+        await this.delay(1000);
         if(!this.enableHack || this.chestBuffer.length === 1){
           this.chestBuffer.forEach((item:any) => {
             item.key.use(this.game.opacity(0));
@@ -1124,7 +1125,13 @@ this.game.onKeyDown("down", () => {
           this.enableHack = false;
           break;
         }
+      }
+      if(this.enableHack){
         this.functionQueue.push({name: 'destroy' , func :this.destroychest});
+      } else{
+        break;
+      }
+      
     }
   }
   stopHacking(){
