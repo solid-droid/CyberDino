@@ -2,5 +2,20 @@
 html, body {
     margin:0;
     padding: 0;
+    font-family: sans-serif;
     background-color: rgb(240, 240, 240);
+}
+
+.addCoins , .removeCoins{
+    position: fixed;
+    left: 30px;
+    top:calc(50vh - 50px);
+}
+
+.removeCoins{
+    color:#960000;
+}
+
+.addCoins{
+    color: #008500;;
 }

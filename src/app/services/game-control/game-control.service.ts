@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 declare const kaboom:any;
 import * as $ from 'jquery';
+import { GameLevelsService } from '../game-levels/game-levels.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,8 @@ export class GameControlService {
   playerMaxPos = 200;
   coins = 0;
   coinsLabel:any;
+  winOnce = false;
+  totalCoinCounter = 0;
   
   chestCapacity = 10;
   chestBuffer:any = [];
@@ -22,6 +25,12 @@ export class GameControlService {
   lastChestType = 'destroy';
   destroyInProgress = false;
 
+  saveEvent = false;
+  saveClicked = false;
+  showMessage:any = null;
+  closeMessage:any = null;
+  messageCounter = 0;
+  currentMessage = 0;
   evilMode = false;
   evilTune:any;
 
@@ -33,6 +42,10 @@ export class GameControlService {
   hackLabel :any;
   card:any;
 
+  constructor(
+    private readonly gameLevels: GameLevelsService
+  ){}
+
   beginGame(){
     this.game = kaboom({ 
       global: false,
@@ -40,8 +53,9 @@ export class GameControlService {
       canvas: document.querySelector("#gameCanvas"),
       background: [ 240,240,240 ],
    });
-
-
+   if(this.gameLevels.displayCounter.intro === 0){
+    this.showMessage(this.gameLevels.intro());
+   }
 
    this.functionLoop();
 
@@ -372,6 +386,7 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       });
       }
   })
+
     //Rigth////////////////////////////////////////////  
     this.game.onKeyDown("right", () => {
       if(!this.gameOver){
@@ -492,25 +507,38 @@ this.game.onKeyDown("down", () => {
    
     this.player.onCollide("blinkingCoin", (coin:any) => {
       coin.destroy();
+      if(this.gameLevels.displayCounter.bomb === 0){
+        this.showMessage(this.gameLevels.bomb());
+      }
       this.destroychest(this, true);
     });
 
     this.player.onCollide("coin", (coin:any) => {
       coin.destroy();
-      this.coins++;
-      this.game.play('coin');
-      this.coinsLabel.text = this.coins;
-      if(this.coins === this.chestCapacity && this.chestBuffer.length < 4){
-        this.coins = 0;
-        this.coinsLabel.text = this.coins;
-        this.functionQueue.push({name: 'create' , func:this.createChest});
-      }
+      this.addCoins(1);
     });
 
 
-    this.player.onCollide("scrollKey", (scroll:any) => {
+    this.player.onCollide("scrollKey", async (scroll:any) => {
       scroll.destroy();
-      if(!this.evilMode){
+      let counter = 0;
+      if(this.gameLevels.displayCounter.phising < 2){
+        this.showMessage(this.gameLevels.phising());
+        const msgCount = this.messageCounter;
+        this.saveEvent = true;
+        while(this.saveEvent){
+          await this.delay(100);
+          if(msgCount <= this.currentMessage){
+            if(counter++ > 50){
+              this.saveEvent = false;
+            }
+          }
+        }
+      } else {
+        counter = 51;
+      }
+      if(!this.evilMode && (counter > 50 || this.saveClicked)){
+        this.saveClicked = false;
         this.backgroundAudio?.pause();
         this.evilTune = this.game.play('trippyEvil');
         this.evilMode = true;
@@ -524,6 +552,9 @@ this.game.onKeyDown("down", () => {
           if(this.evilMode){
             this.backgroundAudio?.play();
             this.evilMode = false;
+            if(this.gameLevels.displayCounter.phisingBlocked < 2){
+              this.showMessage(this.gameLevels.phisingBlocked());
+            }
             this.game.get("enemy").forEach((item:any) => {
               item.use(this.game.sprite('enemy'));
               item.use(this.game.area({ width: 15, height: 15 }));
@@ -543,9 +574,10 @@ this.game.onKeyDown("down", () => {
 
     });
 
+
+
     this.player.onCollide('redBird', async (enemy:any, collision:any) => {
       if(collision.isBottom()){ 
-        this.enableHack = false;
         this.stopHacking();
       }
 
@@ -559,6 +591,7 @@ this.game.onKeyDown("down", () => {
         this.player.color = this.game.rgb(255, 0, 0 );
         this.game.shake(10);
         if(this.coins!==0){
+          this.removeCoinAnimation(this.coins);
           this.coins = 0;
           this.coinsLabel.text = this.coins;
           await this.delay(1000);
@@ -594,6 +627,21 @@ this.game.onKeyDown("down", () => {
 
   }
 
+  addCoins(coinCount:number){
+    if(coinCount>0){
+      this.addCoinAnimation(coinCount);
+    } else {
+      this.removeCoinAnimation(-coinCount);
+    }
+    this.coins+=coinCount;
+    this.game.play('coin');
+    this.coinsLabel.text = this.coins;
+    if(this.coins === this.chestCapacity && this.chestBuffer.length < 4){
+      this.coins = 0;
+      this.coinsLabel.text = this.coins;
+      this.functionQueue.push({name: 'create' , func:this.createChest});
+    }
+  }
 
   async pushPlayerBack(){
     for(let i =0;i<20;++i){
@@ -633,7 +681,13 @@ this.game.onKeyDown("down", () => {
         this.chestBuffer = [];
         this.enableHack = false;
         this.evilMode = false;
+        this.winOnce = false;
         this.evilTune?.stop();
+        this.gameLevels.displayCounter.phisingBlocked = 0;
+        this.gameLevels.displayCounter.phising = 0;
+        this.gameLevels.displayCounter.bomb = 0;
+        this.gameLevels.displayCounter.hacking = 0;
+        this.gameLevels.displayCounter.hackingStoped = 0;
 
         this.createGround();
         this.createBlocks();
@@ -642,8 +696,8 @@ this.game.onKeyDown("down", () => {
         this.backgroundAudio?.play();
 
         this.createPlayer(player);
-        this.createEnemies();
-        this.createBirds();
+        // this.createEnemies();
+        // this.createBirds();
 
         this.game.onUpdate('evil' , (d:any)=> {
           if(!this.gameOver)d.move(- Math.max(30,(d._id%10) * 20) ,0);
@@ -679,6 +733,32 @@ this.game.onKeyDown("down", () => {
     }
   }
 
+  throttle(cb:any, delay = 1000) {
+    let shouldWait = false
+    let waitingArgs:any;
+    const timeoutFunc = () => {
+      if (waitingArgs == null) {
+        shouldWait = false
+      } else {
+        cb(...waitingArgs)
+        waitingArgs = null
+        setTimeout(timeoutFunc, delay)
+      }
+    }
+  
+    return (...args:any) => {
+      if (shouldWait) {
+        waitingArgs = args
+        return
+      }
+  
+      cb(...args)
+      shouldWait = true
+  
+      setTimeout(timeoutFunc, delay)
+    }
+  }
+
 
   getLabel(text:string, x:number, y:number){
 
@@ -703,16 +783,29 @@ this.game.onKeyDown("down", () => {
       this.game.pos(24, 24),
       this.game.scale(4),
       this.game.fixed(),
-    ])
+    ]);
   }
 
+ addCoinAnimation =  this.throttle(async (coin:number)=>{
+  const id = 'add'+this.totalCoinCounter++;
+  $('#gameContainer').append(`<div id=${id} class="addCoins">+ ${coin} coins</div>`);
+  $("#"+id).animate({top: '-=50px'}).fadeOut(500, () => $("#"+id).remove());
+  if(this.totalCoinCounter>100){
+    this.totalCoinCounter = 0;
+  }
+},100);
 
+ removeCoinAnimation =  this.throttle((coin:number)=>{
+  const id = 'remove'+this.totalCoinCounter++;
+  $('#gameContainer').append(`<div id=${id} class="removeCoins">- ${coin} coins</div>`);
+  $("#"+id).animate({top: '-=50px'}).fadeOut(500, () => $("#"+id).remove());
+ },100);
   
   async createChest(_this:any = this){
     while(this.destroyInProgress){
       await new Promise(r => setTimeout(r, 100));
     }
-    if(_this.chestBuffer.length < 5){
+    if(_this.chestBuffer.length < 4){
       const chest = _this.game.add([
         _this.game.sprite('chest'),
         _this.game.pos(_this.game.width() -100 - _this.chestBuffer.length*100  , 10),
@@ -731,9 +824,13 @@ this.game.onKeyDown("down", () => {
         _this.enableHack = true;
         _this.startHacking();
       }
-    }
+    } 
+    if (!_this.winOnce && _this.chestBuffer.length === 4){
+        _this.showMessage(_this.gameLevels.winnig());
+        _this.winOnce = true;
+      }
 
-  }
+    }
 
   async destroychest(_this:any = this , force = false){
     while(this.destroyInProgress){
@@ -750,6 +847,7 @@ this.game.onKeyDown("down", () => {
       _this.chestBuffer[len]?.key.destroy();
       _this.chestBuffer.pop();
       //safety check
+      _this.removeCoinAnimation(10);
       for(let i = len ; i < 4 ; ++ i){
         _this.chestBuffer[len]?.chest.destroy();
         _this.chestBuffer[len]?.label.destroy();
@@ -987,6 +1085,9 @@ this.game.onKeyDown("down", () => {
 
   //////////////////Levels/////////////////////////
   async startHacking(){
+    if(this.gameLevels.displayCounter.hacking == 0){
+      this.showMessage(this.gameLevels.hacking());
+    }
     this.chestBuffer.forEach((item:any) => {
       item.key.use(this.game.opacity(1));
       item.chest.play('hacking');
@@ -998,15 +1099,23 @@ this.game.onKeyDown("down", () => {
             item.key.use(this.game.opacity(0));
             item.chest.play('closed');
           });
+          this.enableHack = false;
           break;
         }
         this.functionQueue.push({name: 'destroy' , func :this.destroychest});
     }
   }
   stopHacking(){
-    this.chestBuffer.forEach((item:any) => {
-      item.key.use(this.game.opacity(0));
-      item.chest.play('closed');
-    });
+    if(this.enableHack){
+      this.enableHack = false;
+      if(this.gameLevels.displayCounter.hackingStoped == 0){
+        this.showMessage(this.gameLevels.hackingStoped());
+      }
+      this.chestBuffer.forEach((item:any) => {
+        item.key.use(this.game.opacity(0));
+        item.chest.play('closed');
+      });
+    }
+
   }
 }

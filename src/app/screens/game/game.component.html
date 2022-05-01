@@ -1,3 +1,12 @@
-<div class="container">
+<div id="gameContainer" class="container">
     <canvas id="gameCanvas"></canvas>
+    <div id="mail" *ngIf="show">
+        <div class="from">
+            From: {{from}}
+        </div>
+        <div class="body" [innerHTML]="body">
+        </div>
+        <div id="accept" (click)="save()"> Saving in {{acceptCounter > 0 ? '('+acceptCounter+'s)' : '' }}</div>
+        <div id="close" (click)="close()">Delete</div>
+    </div>
 </div>
