@@ -509,7 +509,7 @@ this.game.onKeyDown("down", () => {
    
     this.player.onCollide("blinkingCoin", (coin:any) => {
       coin.destroy();
-      if(this.gameLevels.displayCounter.bomb === 0){
+      if(this.gameLevels.displayCounter.bomb < 10){
         this.showMessage(this.gameLevels.bomb());
       }
       this.destroychest(this, true);
@@ -524,7 +524,7 @@ this.game.onKeyDown("down", () => {
     this.player.onCollide("scrollKey", async (scroll:any) => {
       scroll.destroy();
       let counter = 0;
-      if(this.gameLevels.displayCounter.phising < 3){
+      if(this.gameLevels.displayCounter.phising <10){
         this.showMessage(this.gameLevels.phising());
         const msgCount = this.messageCounter;
         this.saveEvent = true;
@@ -554,7 +554,7 @@ this.game.onKeyDown("down", () => {
           if(this.evilMode){
             this.backgroundAudio?.play();
             this.evilMode = false;
-            if(this.gameLevels.displayCounter.phisingBlocked < 3){
+            if(this.gameLevels.displayCounter.phisingBlocked <10){
               this.showMessage(this.gameLevels.phisingBlocked());
             }
             this.game.get("enemy").forEach((item:any) => {
@@ -868,7 +868,7 @@ this.game.onKeyDown("down", () => {
       _this.chestBuffer[len]?.key.destroy();
       _this.chestBuffer.pop();
       //safety check
-      _this.removeCoinAnimation(10);
+      _this.removeCoinAnimation(this.chestCapacity);
       for(let i = len ; i < 4 ; ++ i){
         _this.chestBuffer[len]?.chest.destroy();
         _this.chestBuffer[len]?.label.destroy();
@@ -1107,7 +1107,7 @@ this.game.onKeyDown("down", () => {
 
   //////////////////Levels/////////////////////////
   async startHacking(){
-    if(this.gameLevels.displayCounter.hacking == 0){
+    if(this.gameLevels.displayCounter.hacking <10){
       this.showMessage(this.gameLevels.hacking());
     }
     this.chestBuffer.forEach((item:any) => {
@@ -1137,7 +1137,7 @@ this.game.onKeyDown("down", () => {
   stopHacking(){
     if(this.enableHack){
       this.enableHack = false;
-      if(this.gameLevels.displayCounter.hackingStoped == 0){
+      if(this.gameLevels.displayCounter.hackingStoped <10){
         this.showMessage(this.gameLevels.hackingStoped());
       }
       this.chestBuffer.forEach((item:any) => {
