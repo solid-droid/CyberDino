@@ -524,7 +524,7 @@ this.game.onKeyDown("down", () => {
     this.player.onCollide("scrollKey", async (scroll:any) => {
       scroll.destroy();
       let counter = 0;
-      if(this.gameLevels.displayCounter.phising < 2){
+      if(this.gameLevels.displayCounter.phising < 3){
         this.showMessage(this.gameLevels.phising());
         const msgCount = this.messageCounter;
         this.saveEvent = true;
@@ -554,7 +554,7 @@ this.game.onKeyDown("down", () => {
           if(this.evilMode){
             this.backgroundAudio?.play();
             this.evilMode = false;
-            if(this.gameLevels.displayCounter.phisingBlocked < 2){
+            if(this.gameLevels.displayCounter.phisingBlocked < 3){
               this.showMessage(this.gameLevels.phisingBlocked());
             }
             this.game.get("enemy").forEach((item:any) => {
@@ -579,10 +579,7 @@ this.game.onKeyDown("down", () => {
 
 
     this.player.onCollide('redBird', async (enemy:any, collision:any) => {
-      if(collision.isBottom()){ 
         this.stopHacking();
-      }
-
     });
     this.player.onCollide('evil', async (enemy:any, collision:any) => {
       this.isJumping = false;
