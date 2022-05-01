@@ -15,6 +15,7 @@ export class GameControlService {
   nextGround:any;
   playerMaxPos = 200;
   coins = 0;
+  score:any;
   coinsLabel:any;
   winOnce = false;
   totalCoinCounter = 0;
@@ -392,6 +393,7 @@ this.game.loadSprite("CyberDinoCrouchLeft", './assets/sprites/dinoCrouchLeft.png
       if(!this.gameOver){
         this.player.move(this.SPEED, 0)
         this.playerMaxPos = this.player.pos.x;
+        this.score.text = parseInt(String((this.playerMaxPos - 200)/100));
         let runAnim = this.evilMode ? "trippyRun" : "runRight";
         if(!this.game.isKeyDown("down")){
           if (this.player.isGrounded() && this.player.curAnim() !== runAnim) {
@@ -651,9 +653,10 @@ this.game.onKeyDown("down", () => {
   }
 
   gameOverAnimations(){
+    this.closeMessage();
     this.backgroundAudio?.stop();
     this.game.play("gameover");
-    const label = this.game.add([
+   this.game.add([
       this.game.text(`[Game Over].black`,{font: "sink", 
       styles:{
         black:{
@@ -664,6 +667,20 @@ this.game.onKeyDown("down", () => {
       this.game.pos(this.game.width()/2  , this.game.height()/4),
       this.game.origin('center'),
       this.game.scale(10),
+      this.game.fixed(),
+    ]);
+
+    this.game.add([
+      this.game.text(`[Your Score: ${parseInt(String((this.playerMaxPos - 200)/100))}].black`,{font: "sink", 
+      styles:{
+        black:{
+          color: this.game.rgb(0, 0, 0),
+        }
+      }
+    }),
+      this.game.pos(this.game.width()/2  , this.game.height()/4 + 100),
+      this.game.origin('center'),
+      this.game.scale(3),
       this.game.fixed(),
     ]);
 
@@ -682,6 +699,7 @@ this.game.onKeyDown("down", () => {
         this.enableHack = false;
         this.evilMode = false;
         this.winOnce = false;
+
         this.evilTune?.stop();
         this.gameLevels.displayCounter.phisingBlocked = 0;
         this.gameLevels.displayCounter.phising = 0;
@@ -782,6 +800,12 @@ this.game.onKeyDown("down", () => {
       this.game.text(this.coins),
       this.game.pos(24, 24),
       this.game.scale(4),
+      this.game.fixed(),
+    ]);
+    this.score = this.game.add([
+      this.game.text('0'),
+      this.game.pos(24, this.game.height()-20),
+      this.game.scale(2),
       this.game.fixed(),
     ]);
   }
