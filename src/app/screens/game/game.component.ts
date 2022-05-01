@@ -100,6 +100,10 @@ export class GameComponent implements OnInit {
     this.saveClicked = true;
     $('#gameCanvas').focus();
   }
+
+  takeToGithub(){
+    window.open('https://github.com/solid-droid/CyberDino', "_blank");
+  }
 }
 
 
