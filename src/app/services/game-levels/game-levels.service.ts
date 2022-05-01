@@ -21,7 +21,7 @@ export class GameLevelsService {
   const text =
 `Greetings dino,You are entering the cyber-space, be careful of the hackers.<br>
 Saving the right message will give you extra coins. <br>
-Your mission is to collect 40 coins or 4 coin-chests.<br>
+Your mission is to collect 80 coins or 4 coin-chests.<br>
 `
     this.displayCounter.intro++;
    return {from, text};

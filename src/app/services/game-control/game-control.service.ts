@@ -20,7 +20,7 @@ export class GameControlService {
   winOnce = false;
   totalCoinCounter = 0;
   
-  chestCapacity = 10;
+  chestCapacity = 20;
   chestBuffer:any = [];
   functionQueue:any = [];
   lastChestType = 'destroy';
@@ -981,6 +981,7 @@ this.game.onKeyDown("down", () => {
 
   createScrollKey(x =0 ){
     if(
+      x >= 4800 &&
       (x/2400)%2 && 
       !this.evilMode){
       const heightRange = [150];
